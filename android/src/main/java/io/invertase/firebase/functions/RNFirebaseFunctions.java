@@ -1,23 +1,22 @@
 package io.invertase.firebase.functions;
 
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+
 import com.facebook.react.bridge.WritableMap;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.FirebaseApp;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.google.firebase.functions.FirebaseFunctionsException;
 import com.google.firebase.functions.HttpsCallableReference;
 import com.google.firebase.functions.HttpsCallableResult;
-
-import javax.annotation.Nonnull;
 
 import io.invertase.firebase.Utils;
 
@@ -40,56 +39,14 @@ public class RNFirebaseFunctions extends ReactContextBaseJavaModule {
     return TAG;
   }
 
-  /**
-   * Changes this instance to point to a Cloud Functions emulator running
-   * locally.
-   * <p>
-   * See https://firebase.google.com/docs/functions/local-emulator
-   *
-   * @param origin  the origin string of the local emulator started via firebase tools
-   *                "http://10.0.0.8:1337".
-   * @param appName
-   * @param region
-   * @param origin
-   * @param promise
-   */
   @ReactMethod
-  public void useFunctionsEmulator(
-    String appName,
-    String region,
-    String origin,
-    Promise promise
-  ) {
-    FirebaseApp firebaseApp = FirebaseApp.getInstance(appName);
-    FirebaseFunctions functionsInstance = FirebaseFunctions.getInstance(firebaseApp, region);
-    functionsInstance.useFunctionsEmulator(origin);
-    promise.resolve(null);
-  }
-
-  /**
-   * @param appName
-   * @param region
-   * @param name
-   * @param wrapper
-   * @param promise
-   */
-  @ReactMethod
-  public void httpsCallable(
-    String appName,
-    String region,
-    final String name,
-    ReadableMap wrapper,
-    final Promise promise
-  ) {
-    Object input = wrapper
-      .toHashMap()
-      .get(DATA_KEY);
-
+  public void httpsCallable(final String name, ReadableMap wrapper, final Promise promise) {
+    Object input = wrapper.toHashMap().get(DATA_KEY);
     Log.d(TAG, "function:call:input:" + name + ":" + (input != null ? input.toString() : "null"));
 
-    FirebaseApp firebaseApp = FirebaseApp.getInstance(appName);
-    FirebaseFunctions functionsInstance = FirebaseFunctions.getInstance(firebaseApp, region);
-    HttpsCallableReference httpsCallableReference = functionsInstance.getHttpsCallable(name);
+    HttpsCallableReference httpsCallableReference = FirebaseFunctions
+      .getInstance()
+      .getHttpsCallable(name);
 
     httpsCallableReference
       .call(input)
@@ -103,14 +60,10 @@ public class RNFirebaseFunctions extends ReactContextBaseJavaModule {
             TAG,
             "function:call:onSuccess:" + name
           );
-
           Log.d(
             TAG,
-            "function:call:onSuccess:result:type:" + name + ":" + (result != null ? result
-              .getClass()
-              .getName() : "null")
+            "function:call:onSuccess:result:type:" + name + ":" + (result != null ? result.getClass().getName() : "null")
           );
-
           Log.d(
             TAG,
             "function:call:onSuccess:result:data:" + name + ":" + (result != null ? result.toString() : "null")
@@ -118,11 +71,12 @@ public class RNFirebaseFunctions extends ReactContextBaseJavaModule {
 
           Utils.mapPutValue(DATA_KEY, result, map);
           promise.resolve(map);
+
         }
       })
       .addOnFailureListener(new OnFailureListener() {
         @Override
-        public void onFailure(@Nonnull Exception exception) {
+        public void onFailure(@NonNull Exception exception) {
           Log.d(TAG, "function:call:onFailure:" + name, exception);
 
           String message;
@@ -133,12 +87,10 @@ public class RNFirebaseFunctions extends ReactContextBaseJavaModule {
           if (exception instanceof FirebaseFunctionsException) {
             FirebaseFunctionsException ffe = (FirebaseFunctionsException) exception;
             details = ffe.getDetails();
-            code = ffe
-              .getCode()
-              .name();
-            message = ffe.getMessage();
+            code = ffe.getCode().name();
+            message = ffe.getLocalizedMessage();
           } else {
-            message = exception.getMessage();
+            message = exception.getLocalizedMessage();
           }
 
           Utils.mapPutValue(CODE_KEY, code, map);

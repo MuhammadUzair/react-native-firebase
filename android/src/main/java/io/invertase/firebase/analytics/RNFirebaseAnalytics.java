@@ -1,23 +1,22 @@
 package io.invertase.firebase.analytics;
 
-import android.app.Activity;
 import android.util.Log;
+import android.app.Activity;
+import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.google.firebase.analytics.FirebaseAnalytics;
-
-import javax.annotation.Nullable;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
 
 
 public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
 
   private static final String TAG = "RNFirebaseAnalytics";
 
-  RNFirebaseAnalytics(ReactApplicationContext reactContext) {
+  public RNFirebaseAnalytics(ReactApplicationContext reactContext) {
     super(reactContext);
     Log.d(TAG, "New instance");
   }
@@ -32,9 +31,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
 
   @ReactMethod
   public void logEvent(final String name, @Nullable final ReadableMap params) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .logEvent(name, Arguments.toBundle(params));
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).logEvent(name, Arguments.toBundle(params));
   }
 
   /**
@@ -42,9 +39,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void setAnalyticsCollectionEnabled(final Boolean enabled) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .setAnalyticsCollectionEnabled(enabled);
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).setAnalyticsCollectionEnabled(enabled);
   }
 
   /**
@@ -60,9 +55,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
       activity.runOnUiThread(new Runnable() {
         @Override
         public void run() {
-          FirebaseAnalytics
-            .getInstance(getReactApplicationContext())
-            .setCurrentScreen(activity, screenName, screenClassOverride);
+          FirebaseAnalytics.getInstance(getReactApplicationContext()).setCurrentScreen(activity, screenName, screenClassOverride);
         }
       });
     }
@@ -73,9 +66,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void setMinimumSessionDuration(final double milliseconds) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .setMinimumSessionDuration((long) milliseconds);
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).setMinimumSessionDuration((long) milliseconds);
   }
 
   /**
@@ -83,9 +74,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void setSessionTimeoutDuration(final double milliseconds) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .setSessionTimeoutDuration((long) milliseconds);
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).setSessionTimeoutDuration((long) milliseconds);
   }
 
   /**
@@ -93,9 +82,7 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void setUserId(final String id) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .setUserId(id);
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).setUserId(id);
   }
 
   /**
@@ -104,8 +91,6 @@ public class RNFirebaseAnalytics extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void setUserProperty(final String name, final String value) {
-    FirebaseAnalytics
-      .getInstance(getReactApplicationContext())
-      .setUserProperty(name, value);
+    FirebaseAnalytics.getInstance(getReactApplicationContext()).setUserProperty(name, value);
   }
 }

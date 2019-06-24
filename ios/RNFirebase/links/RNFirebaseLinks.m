@@ -26,7 +26,7 @@ RCT_EXPORT_MODULE();
 - (id)init {
     self = [super init];
     if (self != nil) {
-        DLog(@"Setting up RNFirebaseLinks instance");
+        NSLog(@"Setting up RNFirebaseLinks instance");
         // Set static instance for use from AppDelegate
         theRNFirebaseLinks = self;
     }
@@ -55,12 +55,7 @@ RCT_EXPORT_MODULE();
 
 - (BOOL)application:(UIApplication *)application
 continueUserActivity:(NSUserActivity *)userActivity
-restorationHandler:
-    #if defined(__IPHONE_12_0) && (__IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_12_0)
-        (nonnull void (^)(NSArray<id<UIUserActivityRestoring>> *_Nullable))restorationHandler {
-    #else
-        (nonnull void (^)(NSArray *_Nullable))restorationHandler {
-    #endif  // __IPHONE_12_0
+ restorationHandler:(void (^)(NSArray *))restorationHandler {
     if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb]) {
         return [[FIRDynamicLinks dynamicLinks]
                 handleUniversalLink:userActivity.webpageURL
@@ -68,24 +63,8 @@ restorationHandler:
                     if (dynamicLink && dynamicLink.url && error == nil) {
                         NSURL* url = dynamicLink.url;
                         [self sendJSEvent:self name:LINKS_LINK_RECEIVED body:url.absoluteString];
-                    } else if (error != nil && [NSPOSIXErrorDomain isEqualToString:error.domain] && error.code == 53) {
-                        DLog(@"Failed to handle universal link on first attempt, retrying: %@", userActivity.webpageURL);
-                        
-                        // Per Apple Tech Support, this could occur when returning from background on iOS 12.
-                        // https://github.com/AFNetworking/AFNetworking/issues/4279#issuecomment-447108981
-                        // Retry the request once
-                        [[FIRDynamicLinks dynamicLinks]
-                         handleUniversalLink:userActivity.webpageURL
-                         completion:^(FIRDynamicLink * _Nullable dynamicLink, NSError * _Nullable error) {
-                             if (dynamicLink && dynamicLink.url && error == nil) {
-                                 NSURL* url = dynamicLink.url;
-                                 [self sendJSEvent:self name:LINKS_LINK_RECEIVED body:url.absoluteString];
-                             } else {
-                                 DLog(@"Failed to handle universal link during retry: %@", userActivity.webpageURL);
-                             }
-                         }];
                     } else {
-                        DLog(@"Failed to handle universal link: %@", userActivity.webpageURL);
+                        NSLog(@"Failed to handle universal link: %@", userActivity.webpageURL);
                     }
                 }];
     }
@@ -110,12 +89,12 @@ RCT_EXPORT_METHOD(createDynamicLink:(NSDictionary *)linkData
             reject(@"links/failure", @"Failed to create Dynamic Link", nil);
         } else {
             NSString *longLink = dynamicLink.url.absoluteString;
-            DLog(@"created long dynamic link: %@", longLink);
+            NSLog(@"created long dynamic link: %@", longLink);
             resolve(longLink);
         }
     }
     @catch(NSException * e) {
-        DLog(@"create dynamic link failure %@", e);
+        NSLog(@"create dynamic link failure %@", e);
         reject(@"links/failure",[e reason], nil);
     }
 }
@@ -137,17 +116,17 @@ RCT_EXPORT_METHOD(createShortDynamicLink:(NSDictionary *)linkData
         }
         [components shortenWithCompletion:^(NSURL *_Nullable shortURL, NSArray *_Nullable warnings, NSError *_Nullable error) {
             if (error) {
-                DLog(@"create short dynamic link failure %@", [error localizedDescription]);
+                NSLog(@"create short dynamic link failure %@", [error localizedDescription]);
                 reject(@"links/failure", @"Failed to create Short Dynamic Link", error);
             } else {
                 NSString *shortLink = shortURL.absoluteString;
-                DLog(@"created short dynamic link: %@", shortLink);
+                NSLog(@"created short dynamic link: %@", shortLink);
                 resolve(shortLink);
             }
         }];
     }
     @catch(NSException * e) {
-        DLog(@"create short dynamic link failure %@", e);
+        NSLog(@"create short dynamic link failure %@", e);
         reject(@"links/failure",[e reason], nil);
     }
 }
@@ -161,20 +140,17 @@ RCT_EXPORT_METHOD(getInitialLink:(RCTPromiseResolveBlock)resolve rejecter:(RCTPr
                && [self.bridge.launchOptions[UIApplicationLaunchOptionsUserActivityDictionaryKey][UIApplicationLaunchOptionsUserActivityTypeKey] isEqualToString:NSUserActivityTypeBrowsingWeb]) {
         NSDictionary *dictionary = self.bridge.launchOptions[UIApplicationLaunchOptionsUserActivityDictionaryKey];
         NSUserActivity* userActivity = (NSUserActivity*) dictionary[@"UIApplicationLaunchOptionsUserActivityKey"];
-        BOOL handled = [[FIRDynamicLinks dynamicLinks] handleUniversalLink:userActivity.webpageURL
+        [[FIRDynamicLinks dynamicLinks] handleUniversalLink:userActivity.webpageURL
                                                  completion:^(FIRDynamicLink * _Nullable dynamicLink, NSError * _Nullable error) {
                                                      if (error != nil){
-                                                         DLog(@"Failed to handle universal link: %@", [error localizedDescription]);
+                                                         NSLog(@"Failed to handle universal link: %@", [error localizedDescription]);
                                                          reject(@"links/failure", @"Failed to handle universal link", error);
                                                      } else {
                                                          NSString* urlString = dynamicLink ? dynamicLink.url.absoluteString : userActivity.webpageURL.absoluteString;
-                                                         DLog(@"initial link is: %@", urlString);
+                                                         NSLog(@"initial link is: %@", urlString);
                                                          resolve(urlString);
                                                      }
                                                  }];
-        if (!handled) {
-            resolve(nil);
-        }
     } else {
         resolve(initialLink);
     }
@@ -195,7 +171,7 @@ RCT_EXPORT_METHOD(jsInitialised:(RCTPromiseResolveBlock)resolve rejecter:(RCTPro
     } else if (!initialLink) {
         initialLink = body;
     } else {
-        DLog(@"Multiple link events received before the JS links module has been initialised");
+        NSLog(@"Multiple link events received before the JS links module has been initialised");
     }
 }
 
@@ -214,7 +190,7 @@ RCT_EXPORT_METHOD(jsInitialised:(RCTPromiseResolveBlock)resolve rejecter:(RCTPro
         return components;
     }
     @catch(NSException * e) {
-        DLog(@"error while building componets from meta data %@", e);
+        NSLog(@"error while building componets from meta data %@", e);
         @throw;
     }
 }

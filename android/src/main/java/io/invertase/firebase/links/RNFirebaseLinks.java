@@ -3,6 +3,7 @@ package io.invertase.firebase.links;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import androidx.annotation.NonNull;
 import android.util.Log;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -12,17 +13,17 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
+
 import com.google.firebase.appinvite.FirebaseAppInvite;
 import com.google.firebase.dynamiclinks.DynamicLink;
 import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.google.firebase.dynamiclinks.PendingDynamicLinkData;
 import com.google.firebase.dynamiclinks.ShortDynamicLink;
+import com.google.firebase.dynamiclinks.PendingDynamicLinkData;
 
-import javax.annotation.Nonnull;
+import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.OnFailureListener;
 
 import io.invertase.firebase.Utils;
 
@@ -46,10 +47,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
   public void createDynamicLink(final ReadableMap linkData, final Promise promise) {
     try {
       DynamicLink.Builder builder = getDynamicLinkBuilder(linkData);
-      String link = builder
-        .buildDynamicLink()
-        .getUri()
-        .toString();
+      String link = builder.buildDynamicLink().getUri().toString();
       Log.d(TAG, "created dynamic link: " + link);
       promise.resolve(link);
     } catch (Exception ex) {
@@ -59,11 +57,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
   }
 
   @ReactMethod
-  public void createShortDynamicLink(
-    final ReadableMap linkData,
-    final String type,
-    final Promise promise
-  ) {
+  public void createShortDynamicLink(final ReadableMap linkData, final String type, final Promise promise) {
     try {
       DynamicLink.Builder builder = getDynamicLinkBuilder(linkData);
       Task<ShortDynamicLink> shortLinkTask;
@@ -76,30 +70,16 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
       }
 
       shortLinkTask.addOnCompleteListener(new OnCompleteListener<ShortDynamicLink>() {
-        @Override
-        public void onComplete(@Nonnull Task<ShortDynamicLink> task) {
-          if (task.isSuccessful()) {
-            String shortLink = task
-              .getResult()
-              .getShortLink()
-              .toString();
-            Log.d(TAG, "created short dynamic link: " + shortLink);
-            promise.resolve(shortLink);
-          } else {
-            Log.e(
-              TAG,
-              "create short dynamic link failure " + task
-                .getException()
-                .getMessage()
-            );
-            promise.reject(
-              "links/failure",
-              task
-                .getException()
-                .getMessage(),
-              task.getException()
-            );
-          }
+          @Override
+          public void onComplete(@NonNull Task<ShortDynamicLink> task) {
+        if (task.isSuccessful()) {
+          String shortLink = task.getResult().getShortLink().toString();
+          Log.d(TAG, "created short dynamic link: " + shortLink);
+          promise.resolve(shortLink);
+        } else {
+          Log.e(TAG, "create short dynamic link failure " + task.getException().getMessage());
+          promise.reject("links/failure", task.getException().getMessage(), task.getException());
+        }
         }
       });
     } catch (Exception ex) {
@@ -114,8 +94,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
       promise.resolve(mInitialLink);
     } else {
       if (getCurrentActivity() != null) {
-        FirebaseDynamicLinks
-          .getInstance()
+        FirebaseDynamicLinks.getInstance()
           .getDynamicLink(getCurrentActivity().getIntent())
           .addOnSuccessListener(new OnSuccessListener<PendingDynamicLinkData>() {
             @Override
@@ -123,9 +102,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
               if (pendingDynamicLinkData != null
                 && !isInvitation(pendingDynamicLinkData)) {
 
-                mInitialLink = pendingDynamicLinkData
-                  .getLink()
-                  .toString();
+                mInitialLink = pendingDynamicLinkData.getLink().toString();
               }
               Log.d(TAG, "getInitialLink: link is: " + mInitialLink);
               mInitialLinkInitialized = true;
@@ -134,7 +111,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
           })
           .addOnFailureListener(new OnFailureListener() {
             @Override
-            public void onFailure(@Nonnull Exception e) {
+            public void onFailure(@NonNull Exception e) {
               Log.e(TAG, "getInitialLink: failed to resolve link", e);
               promise.reject("link/initial-link-error", e.getMessage(), e);
             }
@@ -156,22 +133,15 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
 
   @Override
   public void onNewIntent(Intent intent) {
-    FirebaseDynamicLinks
-      .getInstance()
+    FirebaseDynamicLinks.getInstance()
       .getDynamicLink(intent)
       .addOnSuccessListener(new OnSuccessListener<PendingDynamicLinkData>() {
         @Override
         public void onSuccess(PendingDynamicLinkData pendingDynamicLinkData) {
           if (pendingDynamicLinkData != null
             && !isInvitation(pendingDynamicLinkData)) {
-            String link = pendingDynamicLinkData
-              .getLink()
-              .toString();
-            Utils.sendEvent(
-              getReactApplicationContext(),
-              "links_link_received",
-              link
-            );
+            String link = pendingDynamicLinkData.getLink().toString();
+            Utils.sendEvent(getReactApplicationContext(), "links_link_received", link);
           }
         }
       });
@@ -205,18 +175,14 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
   // Looks at the internals of the link data to detect whether it's an invitation or not
   private boolean isInvitation(PendingDynamicLinkData pendingDynamicLinkData) {
     FirebaseAppInvite invite = FirebaseAppInvite.getInvitation(pendingDynamicLinkData);
-    if (invite != null && invite.getInvitationId() != null && !invite
-      .getInvitationId()
-      .isEmpty()) {
+    if (invite != null && invite.getInvitationId() != null && !invite.getInvitationId().isEmpty()) {
       return true;
     }
     return false;
   }
 
   private DynamicLink.Builder getDynamicLinkBuilder(final ReadableMap linkData) {
-    DynamicLink.Builder builder = FirebaseDynamicLinks
-      .getInstance()
-      .createDynamicLink();
+    DynamicLink.Builder builder = FirebaseDynamicLinks.getInstance().createDynamicLink();
     try {
       builder.setLink(Uri.parse(linkData.getString("link")));
       builder.setDynamicLinkDomain(linkData.getString("dynamicLinkDomain"));
@@ -233,10 +199,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
     return builder;
   }
 
-  private void setAnalyticsParameters(
-    final ReadableMap analyticsData,
-    final DynamicLink.Builder builder
-  ) {
+  private void setAnalyticsParameters(final ReadableMap analyticsData, final DynamicLink.Builder builder) {
     DynamicLink.GoogleAnalyticsParameters.Builder analyticsParameters = new DynamicLink.GoogleAnalyticsParameters.Builder();
 
     if (analyticsData.hasKey("campaign")) {
@@ -257,13 +220,9 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
     builder.setGoogleAnalyticsParameters(analyticsParameters.build());
   }
 
-  private void setAndroidParameters(
-    final ReadableMap androidData,
-    final DynamicLink.Builder builder
-  ) {
+  private void setAndroidParameters(final ReadableMap androidData, final DynamicLink.Builder builder) {
     if (androidData.hasKey("packageName")) {
-      DynamicLink.AndroidParameters.Builder androidParameters = new DynamicLink.AndroidParameters.Builder(
-        androidData.getString("packageName"));
+      DynamicLink.AndroidParameters.Builder androidParameters = new DynamicLink.AndroidParameters.Builder(androidData.getString("packageName"));
 
       if (androidData.hasKey("fallbackUrl")) {
         androidParameters.setFallbackUrl(Uri.parse(androidData.getString("fallbackUrl")));
@@ -302,10 +261,7 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
     }
   }
 
-  private void setITunesParameters(
-    final ReadableMap itunesData,
-    final DynamicLink.Builder builder
-  ) {
+  private void setITunesParameters(final ReadableMap itunesData, final DynamicLink.Builder builder) {
     DynamicLink.ItunesConnectAnalyticsParameters.Builder itunesParameters = new DynamicLink.ItunesConnectAnalyticsParameters.Builder();
 
     if (itunesData.hasKey("affiliateToken")) {
@@ -320,23 +276,16 @@ public class RNFirebaseLinks extends ReactContextBaseJavaModule implements Activ
     builder.setItunesConnectAnalyticsParameters(itunesParameters.build());
   }
 
-  private void setNavigationParameters(
-    final ReadableMap navigationData,
-    final DynamicLink.Builder builder
-  ) {
+  private void setNavigationParameters(final ReadableMap navigationData, final DynamicLink.Builder builder) {
     DynamicLink.NavigationInfoParameters.Builder navigationParameters = new DynamicLink.NavigationInfoParameters.Builder();
 
     if (navigationData.hasKey("forcedRedirectEnabled")) {
-      navigationParameters.setForcedRedirectEnabled(navigationData.getBoolean(
-        "forcedRedirectEnabled"));
+      navigationParameters.setForcedRedirectEnabled(navigationData.getBoolean("forcedRedirectEnabled"));
     }
     builder.setNavigationInfoParameters(navigationParameters.build());
   }
 
-  private void setSocialParameters(
-    final ReadableMap socialData,
-    final DynamicLink.Builder builder
-  ) {
+  private void setSocialParameters(final ReadableMap socialData, final DynamicLink.Builder builder) {
     DynamicLink.SocialMetaTagParameters.Builder socialParameters = new DynamicLink.SocialMetaTagParameters.Builder();
 
     if (socialData.hasKey("descriptionText")) {

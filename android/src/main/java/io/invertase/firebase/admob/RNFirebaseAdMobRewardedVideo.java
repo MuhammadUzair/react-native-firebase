@@ -2,6 +2,7 @@ package io.invertase.firebase.admob;
 
 
 import android.app.Activity;
+import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
@@ -11,12 +12,11 @@ import com.google.android.gms.ads.reward.RewardItem;
 import com.google.android.gms.ads.reward.RewardedVideoAd;
 import com.google.android.gms.ads.reward.RewardedVideoAdListener;
 
-import javax.annotation.Nullable;
-
 import io.invertase.firebase.Utils;
 
 public class RNFirebaseAdMobRewardedVideo implements RewardedVideoAdListener {
 
+  private RewardedVideoAd mAd;
   private String adUnit;
   private RNFirebaseAdMob adMob;
   private RewardedVideoAd rewardedVideo;
@@ -25,14 +25,9 @@ public class RNFirebaseAdMobRewardedVideo implements RewardedVideoAdListener {
     adUnit = adUnitString;
     adMob = adMobInstance;
 
-    Activity activity = adMob.getActivity();
-    // Some ads won't work without passing activity, or the app will crash
-    if (activity == null) {
-      rewardedVideo = MobileAds.getRewardedVideoAdInstance(adMob.getContext());
-    } else {
-      rewardedVideo = MobileAds.getRewardedVideoAdInstance(activity);
-    }
+    rewardedVideo = MobileAds.getRewardedVideoAdInstance(adMob.getContext());
 
+    Activity activity = adMob.getActivity();
     final RNFirebaseAdMobRewardedVideo _this = this;
 
     if (activity != null) {
@@ -131,7 +126,7 @@ public class RNFirebaseAdMobRewardedVideo implements RewardedVideoAdListener {
    * @param type
    * @param payload
    */
-  private void sendEvent(String type, final @Nullable WritableMap payload) {
+  void sendEvent(String type, final @Nullable WritableMap payload) {
     WritableMap map = Arguments.createMap();
     map.putString("type", type);
     map.putString("adUnit", adUnit);

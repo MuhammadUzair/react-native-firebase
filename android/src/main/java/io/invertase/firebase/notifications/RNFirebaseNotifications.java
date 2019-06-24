@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import androidx.annotation.Nullable;
 import androidx.core.app.RemoteInput;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import android.util.Log;
@@ -24,10 +25,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.google.firebase.messaging.RemoteMessage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Map;
-
-import javax.annotation.Nullable;
 
 import io.invertase.firebase.Utils;
 import io.invertase.firebase.messaging.RNFirebaseMessagingService;
@@ -43,8 +41,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
   private SharedPreferences sharedPreferences = null;
 
   private RNFirebaseNotificationManager notificationManager;
-
-  RNFirebaseNotifications(ReactApplicationContext context) {
+  public RNFirebaseNotifications(ReactApplicationContext context) {
     super(context);
     context.addActivityEventListener(this);
 
@@ -54,16 +51,12 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
     LocalBroadcastManager localBroadcastManager = LocalBroadcastManager.getInstance(context);
 
     // Subscribe to remote notification events
-    localBroadcastManager.registerReceiver(
-      new RemoteNotificationReceiver(),
-      new IntentFilter(RNFirebaseMessagingService.REMOTE_NOTIFICATION_EVENT)
-    );
+    localBroadcastManager.registerReceiver(new RemoteNotificationReceiver(),
+      new IntentFilter(RNFirebaseMessagingService.REMOTE_NOTIFICATION_EVENT));
 
     // Subscribe to scheduled notification events
-    localBroadcastManager.registerReceiver(
-      new ScheduledNotificationReceiver(),
-      new IntentFilter(RNFirebaseNotificationManager.SCHEDULED_NOTIFICATION_EVENT)
-    );
+    localBroadcastManager.registerReceiver(new ScheduledNotificationReceiver(),
+      new IntentFilter(RNFirebaseNotificationManager.SCHEDULED_NOTIFICATION_EVENT));
   }
 
   @Override
@@ -130,10 +123,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
   @ReactMethod
   public void setBadge(int badge, Promise promise) {
     // Store the badge count for later retrieval
-    sharedPreferences
-      .edit()
-      .putInt(BADGE_KEY, badge)
-      .apply();
+    sharedPreferences.edit().putInt(BADGE_KEY, badge).apply();
     if (badge == 0) {
       Log.d(TAG, "Remove badge count");
       ShortcutBadger.removeCount(this.getReactApplicationContext());
@@ -154,109 +144,38 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
   //////////////////////////////////////////////////////////////////////
   @ReactMethod
   public void createChannel(ReadableMap channelMap, Promise promise) {
-    try {
-      notificationManager.createChannel(channelMap);
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
+    notificationManager.createChannel(channelMap);
     promise.resolve(null);
   }
 
   @ReactMethod
   public void createChannelGroup(ReadableMap channelGroupMap, Promise promise) {
-    try {
-      notificationManager.createChannelGroup(channelGroupMap);
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
+    notificationManager.createChannelGroup(channelGroupMap);
     promise.resolve(null);
   }
 
   @ReactMethod
-  public void createChannelGroups(ReadableArray channelGroupsArray, Promise promise) {
-    try {
-      notificationManager.createChannelGroups(channelGroupsArray);
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
+  public void createChannelGroup(ReadableArray channelGroupsArray, Promise promise) {
+    notificationManager.createChannelGroups(channelGroupsArray);
     promise.resolve(null);
   }
 
   @ReactMethod
   public void createChannels(ReadableArray channelsArray, Promise promise) {
-    try {
-      notificationManager.createChannels(channelsArray);
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
+    notificationManager.createChannels(channelsArray);
     promise.resolve(null);
   }
 
   @ReactMethod
   public void deleteChannelGroup(String channelId, Promise promise) {
-    try {
-      notificationManager.deleteChannelGroup(channelId);
-      promise.resolve(null);
-    } catch (NullPointerException e) {
-      promise.reject(
-        "notifications/channel-group-not-found",
-        "The requested NotificationChannelGroup does not exist, have you created it?"
-      );
-    }
+    notificationManager.deleteChannelGroup(channelId);
+    promise.resolve(null);
   }
 
   @ReactMethod
   public void deleteChannel(String channelId, Promise promise) {
-    try {
-      notificationManager.deleteChannel(channelId);
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
+    notificationManager.deleteChannel(channelId);
     promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void getChannel(String channelId, Promise promise) {
-    try {
-      promise.resolve(notificationManager.getChannel(channelId));
-      return;
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
-    promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void getChannels(Promise promise) {
-    try {
-      promise.resolve(notificationManager.getChannels());
-      return;
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
-    promise.resolve(Collections.emptyList());
-  }
-
-  @ReactMethod
-  public void getChannelGroup(String channelGroupId, Promise promise) {
-    try {
-      promise.resolve(notificationManager.getChannelGroup(channelGroupId));
-      return;
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
-    promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void getChannelGroups(Promise promise) {
-    try {
-      promise.resolve(notificationManager.getChannelGroups());
-      return;
-    } catch (Throwable t) {
-      // do nothing - most likely a NoSuchMethodError for < v4 support lib
-    }
-    promise.resolve(Collections.emptyList());
   }
   //////////////////////////////////////////////////////////////////////
   // End Android specific methods
@@ -274,11 +193,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
   public void onNewIntent(Intent intent) {
     WritableMap notificationOpenMap = parseIntentForNotification(intent);
     if (notificationOpenMap != null) {
-      Utils.sendEvent(
-        getReactApplicationContext(),
-        "notifications_notification_opened",
-        notificationOpenMap
-      );
+      Utils.sendEvent(getReactApplicationContext(), "notifications_notification_opened", notificationOpenMap);
     }
   }
 
@@ -362,9 +277,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
       notificationMap.putString("body", body);
     }
     if (message.getData() != null) {
-      for (Map.Entry<String, String> e : message
-        .getData()
-        .entrySet()) {
+      for (Map.Entry<String, String> e : message.getData().entrySet()) {
         dataMap.putString(e.getKey(), e.getValue());
       }
     }
@@ -402,33 +315,27 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
     return notificationMap;
   }
 
-  private @Nullable
-  String getNotificationBody(RemoteMessage.Notification notification) {
+  private @Nullable String getNotificationBody(RemoteMessage.Notification notification) {
     String body = notification.getBody();
     String bodyLocKey = notification.getBodyLocalizationKey();
     if (bodyLocKey != null) {
       String[] bodyLocArgs = notification.getBodyLocalizationArgs();
       Context ctx = getReactApplicationContext();
       int resId = getResId(ctx, bodyLocKey);
-      return ctx
-        .getResources()
-        .getString(resId, (Object[]) bodyLocArgs);
+      return ctx.getResources().getString(resId, (Object[]) bodyLocArgs);
     } else {
       return body;
     }
   }
 
-  private @Nullable
-  String getNotificationTitle(RemoteMessage.Notification notification) {
+  private @Nullable String getNotificationTitle(RemoteMessage.Notification notification) {
     String title = notification.getTitle();
     String titleLocKey = notification.getTitleLocalizationKey();
     if (titleLocKey != null) {
       String[] titleLocArgs = notification.getTitleLocalizationArgs();
       Context ctx = getReactApplicationContext();
       int resId = getResId(ctx, titleLocKey);
-      return ctx
-        .getResources()
-        .getString(resId, (Object[]) titleLocArgs);
+      return ctx.getResources().getString(resId, (Object[]) titleLocArgs);
     } else {
       return title;
     }
@@ -443,11 +350,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
         RemoteMessage message = intent.getParcelableExtra("notification");
         WritableMap messageMap = parseRemoteMessage(message);
 
-        Utils.sendEvent(
-          getReactApplicationContext(),
-          "notifications_notification_received",
-          messageMap
-        );
+        Utils.sendEvent(getReactApplicationContext(), "notifications_notification_received", messageMap);
       }
     }
   }
@@ -461,11 +364,7 @@ public class RNFirebaseNotifications extends ReactContextBaseJavaModule implemen
         Bundle notification = intent.getBundleExtra("notification");
         WritableMap messageMap = parseNotificationBundle(notification);
 
-        Utils.sendEvent(
-          getReactApplicationContext(),
-          "notifications_notification_received",
-          messageMap
-        );
+        Utils.sendEvent(getReactApplicationContext(), "notifications_notification_received", messageMap);
       }
     }
   }

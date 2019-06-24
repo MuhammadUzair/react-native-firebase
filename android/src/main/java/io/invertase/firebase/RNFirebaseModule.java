@@ -1,29 +1,29 @@
 package io.invertase.firebase;
 
+import android.util.Log;
 import android.app.Activity;
 import android.content.IntentSender;
-import android.util.Log;
 
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.Callback;
+import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.util.ArrayList;
+
+// react
 import com.facebook.react.bridge.Promise;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+
+// play services
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-// react
-// play services
 
 @SuppressWarnings("WeakerAccess")
 public class RNFirebaseModule extends ReactContextBaseJavaModule {
@@ -62,22 +62,21 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
   public void deleteApp(String appName, Promise promise) {
     FirebaseApp firebaseApp = FirebaseApp.getInstance(appName);
 
-    if (firebaseApp != null) {
-      firebaseApp.delete();
+    if (firebaseApp == null) {
+      promise.resolve(null);
+    } else {
+      // todo ? not implemented on firebase sdk
+      promise.reject(
+        "app/delete-app-failed",
+        "Failed to delete app. The android Firebase SDK currently does not support this functionality"
+      );
     }
-
-    promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void getPlayServicesStatus(Promise promise) {
-    promise.resolve(getPlayServicesStatusMap());
   }
 
   /**
    * @return
    */
-  private WritableMap getPlayServicesStatusMap() {
+  private WritableMap getPlayServicesStatus() {
     GoogleApiAvailability gapi = GoogleApiAvailability.getInstance();
     final int status = gapi.isGooglePlayServicesAvailable(getReactApplicationContext());
     WritableMap result = Arguments.createMap();
@@ -104,9 +103,7 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
     if (status != ConnectionResult.SUCCESS && gapi.isUserResolvableError(status)) {
       Activity activity = getCurrentActivity();
       if (activity != null) {
-        gapi
-          .getErrorDialog(activity, status, status)
-          .show();
+        gapi.getErrorDialog(activity, status, status).show();
       }
     }
   }
@@ -116,9 +113,7 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
    */
   @ReactMethod
   public void resolutionForPlayServices() {
-    int status = GoogleApiAvailability
-      .getInstance()
-      .isGooglePlayServicesAvailable(getReactApplicationContext());
+    int status = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(getReactApplicationContext());
     ConnectionResult connectionResult = new ConnectionResult(status);
 
     if (!connectionResult.isSuccess() && connectionResult.hasResolution()) {
@@ -153,6 +148,8 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
 
   @Override
   public Map<String, Object> getConstants() {
+    FirebaseApp firebaseApp;
+
     Map<String, Object> constants = new HashMap<>();
     List<Map<String, Object>> appMapsList = new ArrayList<>();
     List<FirebaseApp> firebaseAppList = FirebaseApp.getApps(getReactApplicationContext());
@@ -167,7 +164,6 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
       appProps.put("apiKey", appOptions.getApiKey());
       appProps.put("appId", appOptions.getApplicationId());
       appProps.put("projectId", appOptions.getProjectId());
-      appProps.put("projectId", appOptions.getProjectId());
       appProps.put("databaseURL", appOptions.getDatabaseUrl());
       appProps.put("messagingSenderId", appOptions.getGcmSenderId());
       appProps.put("storageBucket", appOptions.getStorageBucket());
@@ -176,7 +172,7 @@ public class RNFirebaseModule extends ReactContextBaseJavaModule {
     }
 
     constants.put("apps", appMapsList);
-    constants.put("playServicesAvailability", getPlayServicesStatusMap());
+    constants.put("playServicesAvailability", getPlayServicesStatus());
     return constants;
   }
 }

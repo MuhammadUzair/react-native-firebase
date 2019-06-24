@@ -21,7 +21,6 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -31,82 +30,59 @@ import io.invertase.firebase.Utils;
 
 public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
   private static final String TAG = "DisplayNotificationTask";
-  private final WeakReference<Context> contextWeakReference;
-  private final WeakReference<ReactApplicationContext> reactContextWeakReference;
 
-  private final Promise promise;
+  private final Context context;
   private final Bundle notification;
   private final NotificationManager notificationManager;
+  private final Promise promise;
+  private ReactApplicationContext reactContext;
 
-  DisplayNotificationTask(
-    Context context, ReactApplicationContext reactContext,
-    NotificationManager notificationManager,
-    Bundle notification, Promise promise
-  ) {
-    this.contextWeakReference = new WeakReference<>(context);
-    this.reactContextWeakReference = new WeakReference<>(reactContext);
-
-    this.promise = promise;
+  public DisplayNotificationTask(Context context, ReactApplicationContext reactContext,
+                                 NotificationManager notificationManager,
+                                 Bundle notification, Promise promise) {
+    this.context = context;
     this.notification = notification;
     this.notificationManager = notificationManager;
-  }
-
-  @Override
-  protected void onPostExecute(Void result) {
-    contextWeakReference.clear();
-    reactContextWeakReference.clear();
+    this.promise = promise;
+    this.reactContext = reactContext;
   }
 
   @Override
   protected Void doInBackground(Void... voids) {
-    Context context = contextWeakReference.get();
-    if (context == null) return null;
-
     try {
-      Class intentClass = getMainActivityClass(context);
-
+      Class intentClass = getMainActivityClass();
       if (intentClass == null) {
         if (promise != null) {
-          promise.reject(
-            "notification/display_notification_error",
-            "Could not find main activity class"
-          );
+          promise.reject("notification/display_notification_error", "Could not find main activity class");
         }
         return null;
       }
 
       Bundle android = notification.getBundle("android");
+
+      String channelId = android.getString("channelId");
       String notificationId = notification.getString("notificationId");
 
       NotificationCompat.Builder nb;
-      try {
-        String channelId = android.getString("channelId");
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         nb = new NotificationCompat.Builder(context, channelId);
-      } catch (Throwable t) {
-        // thrown if v4 android support library < 26
+      } else {
         nb = new NotificationCompat.Builder(context);
       }
 
       if (notification.containsKey("body")) {
         nb = nb.setContentText(notification.getString("body"));
       }
-
       if (notification.containsKey("data")) {
         nb = nb.setExtras(notification.getBundle("data"));
       }
-
       if (notification.containsKey("sound")) {
-        Uri sound = RNFirebaseNotificationManager.getSound(
-          context,
-          notification.getString("sound")
-        );
+        Uri sound = RNFirebaseNotificationManager.getSound(context, notification.getString("sound"));
         nb = nb.setSound(sound);
       }
-
       if (notification.containsKey("subtitle")) {
         nb = nb.setSubText(notification.getString("subtitle"));
       }
-
       if (notification.containsKey("title")) {
         nb = nb.setContentTitle(notification.getString("title"));
       }
@@ -114,44 +90,32 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
       if (android.containsKey("autoCancel")) {
         nb = nb.setAutoCancel(android.getBoolean("autoCancel"));
       }
-
-      if (android.containsKey("badgeIconType") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      if (android.containsKey("badgeIconType")) {
         Double badgeIconType = android.getDouble("badgeIconType");
-        try {
-          nb = nb.setBadgeIconType(badgeIconType.intValue());
-        } catch (Throwable t) {
-          // thrown if v4 android support library < 26
-          // do nothing
-        }
+        nb = nb.setBadgeIconType(badgeIconType.intValue());
       }
-
       if (android.containsKey("bigPicture")) {
         Bundle bigPicture = android.getBundle("bigPicture");
+
         NotificationCompat.BigPictureStyle bp = new NotificationCompat.BigPictureStyle();
         Bitmap picture = getBitmap(bigPicture.getString("picture"));
-
         if (picture != null) {
           bp = bp.bigPicture(picture);
         }
-
         if (bigPicture.containsKey("largeIcon")) {
           Bitmap largeIcon = getBitmap(bigPicture.getString("largeIcon"));
           if (largeIcon != null) {
             bp = bp.bigLargeIcon(largeIcon);
           }
         }
-
         if (bigPicture.containsKey("contentTitle")) {
           bp = bp.setBigContentTitle(bigPicture.getString("contentTitle"));
         }
-
         if (bigPicture.containsKey("summaryText")) {
           bp = bp.setSummaryText(bigPicture.getString("summaryText"));
         }
-
         nb = nb.setStyle(bp);
       }
-
       if (android.containsKey("bigText")) {
         Bundle bigText = android.getBundle("bigText");
 
@@ -165,36 +129,26 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
         }
         nb = nb.setStyle(bt);
       }
-
       if (android.containsKey("category")) {
         nb = nb.setCategory(android.getString("category"));
       }
-
       if (android.containsKey("color")) {
         String color = android.getString("color");
         nb = nb.setColor(Color.parseColor(color));
       }
-
-      if (android.containsKey("colorized") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        try {
-          nb = nb.setColorized(android.getBoolean("colorized"));
-        } catch (Throwable t) {
-          // thrown if v4 android support library < 26
-          // do nothing
-        }
+      if (android.containsKey("colorized")) {
+        nb = nb.setColorized(android.getBoolean("colorized"));
       }
-
       if (android.containsKey("contentInfo")) {
         nb = nb.setContentInfo(android.getString("contentInfo"));
       }
-
       if (android.containsKey("defaults")) {
         Double defaultValues = android.getDouble("defaults");
         int defaults = defaultValues.intValue();
 
         if (defaults == 0) {
           ArrayList<Integer> defaultsArray = android.getIntegerArrayList("defaults");
-          if (defaultsArray != null) {
+          if(defaultsArray != null) {
             for (Integer defaultValue : defaultsArray) {
               defaults |= defaultValue;
             }
@@ -203,32 +157,22 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
 
         nb = nb.setDefaults(defaults);
       }
-
       if (android.containsKey("group")) {
         nb = nb.setGroup(android.getString("group"));
       }
-
-      if (android.containsKey("groupAlertBehaviour") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      if (android.containsKey("groupAlertBehaviour")) {
         Double groupAlertBehaviour = android.getDouble("groupAlertBehaviour");
-        try {
-          nb = nb.setGroupAlertBehavior(groupAlertBehaviour.intValue());
-        } catch (Throwable t) {
-          // thrown if v4 android support library < 26
-          // do nothing
-        }
+        nb = nb.setGroupAlertBehavior(groupAlertBehaviour.intValue());
       }
-
       if (android.containsKey("groupSummary")) {
         nb = nb.setGroupSummary(android.getBoolean("groupSummary"));
       }
-
       if (android.containsKey("largeIcon")) {
         Bitmap largeIcon = getBitmap(android.getString("largeIcon"));
         if (largeIcon != null) {
           nb = nb.setLargeIcon(largeIcon);
         }
       }
-
       if (android.containsKey("lights")) {
         Bundle lights = android.getBundle("lights");
         Double argb = lights.getDouble("argb");
@@ -236,7 +180,6 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
         Double offMs = lights.getDouble("offMs");
         nb = nb.setLights(argb.intValue(), onMs.intValue(), offMs.intValue());
       }
-
       if (android.containsKey("localOnly")) {
         nb = nb.setLocalOnly(android.getBoolean("localOnly"));
       }
@@ -245,15 +188,12 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
         Double number = android.getDouble("number");
         nb = nb.setNumber(number.intValue());
       }
-
       if (android.containsKey("ongoing")) {
         nb = nb.setOngoing(android.getBoolean("ongoing"));
       }
-
       if (android.containsKey("onlyAlertOnce")) {
-        nb = nb.setOnlyAlertOnce(android.getBoolean("onlyAlertOnce"));
+        nb = nb.setOngoing(android.getBoolean("onlyAlertOnce"));
       }
-
       if (android.containsKey("people")) {
         List<String> people = android.getStringArrayList("people");
         if (people != null) {
@@ -262,48 +202,33 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
           }
         }
       }
-
       if (android.containsKey("priority")) {
         Double priority = android.getDouble("priority");
         nb = nb.setPriority(priority.intValue());
       }
-
       if (android.containsKey("progress")) {
         Bundle progress = android.getBundle("progress");
         Double max = progress.getDouble("max");
         Double progressI = progress.getDouble("progress");
-        nb = nb.setProgress(
-          max.intValue(),
-          progressI.intValue(),
-          progress.getBoolean("indeterminate")
-        );
+        nb = nb.setProgress(max.intValue(), progressI.intValue(), progress.getBoolean("indeterminate"));
       }
-
       // TODO: Public version of notification
       /* if (android.containsKey("publicVersion")) {
         nb = nb.setPublicVersion();
       } */
-
       if (android.containsKey("remoteInputHistory")) {
         nb = nb.setRemoteInputHistory(android.getStringArray("remoteInputHistory"));
       }
-
-      if (android.containsKey("shortcutId") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        try {
-          nb = nb.setShortcutId(android.getString("shortcutId"));
-        } catch (Throwable t) {
-          // thrown if v4 android support library < 26
-          // do nothing
-        }
+      if (android.containsKey("shortcutId")) {
+        nb = nb.setShortcutId(android.getString("shortcutId"));
       }
-
       if (android.containsKey("showWhen")) {
         nb = nb.setShowWhen(android.getBoolean("showWhen"));
       }
-
       if (android.containsKey("smallIcon")) {
         Bundle smallIcon = android.getBundle("smallIcon");
         int smallIconResourceId = getIcon(smallIcon.getString("icon"));
+
         if (smallIconResourceId != 0) {
           if (smallIcon.containsKey("level")) {
             Double level = smallIcon.getDouble("level");
@@ -313,42 +238,33 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
           }
         }
       }
-
       if (android.containsKey("sortKey")) {
         nb = nb.setSortKey(android.getString("sortKey"));
       }
-
       if (android.containsKey("ticker")) {
         nb = nb.setTicker(android.getString("ticker"));
       }
-
       if (android.containsKey("timeoutAfter")) {
         Double timeoutAfter = android.getDouble("timeoutAfter");
         nb = nb.setTimeoutAfter(timeoutAfter.longValue());
       }
-
       if (android.containsKey("usesChronometer")) {
         nb = nb.setUsesChronometer(android.getBoolean("usesChronometer"));
       }
-
       if (android.containsKey("vibrate")) {
         ArrayList<Integer> vibrate = android.getIntegerArrayList("vibrate");
-        if (vibrate != null) {
+        if(vibrate != null) {
           long[] vibrateArray = new long[vibrate.size()];
           for (int i = 0; i < vibrate.size(); i++) {
-            vibrateArray[i] = vibrate
-              .get(i)
-              .longValue();
+            vibrateArray[i] = vibrate.get(i).longValue();
           }
           nb = nb.setVibrate(vibrateArray);
         }
       }
-
       if (android.containsKey("visibility")) {
         Double visibility = android.getDouble("visibility");
         nb = nb.setVisibility(visibility.intValue());
       }
-
       if (android.containsKey("when")) {
         Double when = android.getDouble("when");
         nb = nb.setWhen(when.longValue());
@@ -358,36 +274,26 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
       if (android.containsKey("actions")) {
         List<Bundle> actions = (List) android.getSerializable("actions");
         for (Bundle a : actions) {
-          NotificationCompat.Action action = createAction(context, a, intentClass, notification);
+          NotificationCompat.Action action = createAction(a, intentClass, notification);
           nb = nb.addAction(action);
         }
       }
 
       String tag = null;
       if (android.containsKey("tag")) {
-        tag = android.getString("tag");
+          tag = android.getString("tag");
       }
 
       // Create the notification intent
-      PendingIntent contentIntent = createIntent(
-        context,
-        intentClass,
-        notification,
-        android.getString("clickAction")
-      );
-
+      PendingIntent contentIntent = createIntent(intentClass, notification, android.getString("clickAction"));
       nb = nb.setContentIntent(contentIntent);
 
       // Build the notification and send it
       Notification builtNotification = nb.build();
       notificationManager.notify(tag, notificationId.hashCode(), builtNotification);
 
-      if (reactContextWeakReference.get() != null) {
-        Utils.sendEvent(
-          reactContextWeakReference.get(),
-          "notifications_notification_displayed",
-          Arguments.fromBundle(notification)
-        );
+      if (reactContext != null) {
+        Utils.sendEvent(reactContext, "notifications_notification_displayed", Arguments.fromBundle(notification));
       }
 
       if (promise != null) {
@@ -404,33 +310,20 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
     return null;
   }
 
-  private NotificationCompat.Action createAction(
-    Context context,
-    Bundle action,
-    Class intentClass,
-    Bundle notification
-  ) {
+  private NotificationCompat.Action createAction(Bundle action, Class intentClass, Bundle notification) {
+    boolean showUserInterface = action.containsKey("showUserInterface") && action.getBoolean("showUserInterface");
     String actionKey = action.getString("action");
-    boolean showUserInterface = action.containsKey("showUserInterface") && action.getBoolean(
-      "showUserInterface");
-
     PendingIntent actionIntent = showUserInterface ?
-      createIntent(context, intentClass, notification, actionKey) :
-      createBroadcastIntent(context, notification, actionKey);
-
+      createIntent(intentClass, notification, actionKey) :
+      createBroadcastIntent(notification, actionKey);
     int icon = getIcon(action.getString("icon"));
     String title = action.getString("title");
 
-    NotificationCompat.Action.Builder ab = new NotificationCompat.Action.Builder(
-      icon,
-      title,
-      actionIntent
-    );
+    NotificationCompat.Action.Builder ab = new NotificationCompat.Action.Builder(icon, title, actionIntent);
 
     if (action.containsKey("allowGeneratedReplies")) {
       ab = ab.setAllowGeneratedReplies(action.getBoolean("allowGeneratedReplies"));
     }
-
     if (action.containsKey("remoteInputs")) {
       List<Bundle> remoteInputs = (List) action.getSerializable("remoteInputs");
       for (Bundle ri : remoteInputs) {
@@ -438,7 +331,6 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
         ab = ab.addRemoteInput(remoteInput);
       }
     }
-
     // TODO: SemanticAction and ShowsUserInterface only available on v28?
     // if (action.containsKey("semanticAction")) {
     //   Double semanticAction = action.getDouble("semanticAction");
@@ -451,12 +343,7 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
     return ab.build();
   }
 
-  private PendingIntent createIntent(
-    Context context,
-    Class intentClass,
-    Bundle notification,
-    String action
-  ) {
+  private PendingIntent createIntent(Class intentClass, Bundle notification, String action) {
     Intent intent = new Intent(context, intentClass);
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
     intent.putExtras(notification);
@@ -466,33 +353,24 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
     }
 
     String notificationId = notification.getString("notificationId");
-    return PendingIntent.getActivity(
-      context,
-      notificationId.hashCode(),
-      intent,
-      PendingIntent.FLAG_UPDATE_CURRENT
-    );
+    return PendingIntent.getActivity(context, notificationId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT);
   }
 
-  private PendingIntent createBroadcastIntent(Context context, Bundle notification, String action) {
-    String notificationId = notification.getString("notificationId") + action;
+  private PendingIntent createBroadcastIntent(Bundle notification, String action) {
     Intent intent = new Intent(context, RNFirebaseBackgroundNotificationActionReceiver.class);
-
-    intent.putExtra("action", action);
     intent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-    intent.putExtra("notification", notification);
-    intent.setAction("io.invertase.firebase.notifications.BackgroundAction");
 
-    return PendingIntent.getBroadcast(
-      context,
-      notificationId.hashCode(),
-      intent,
-      PendingIntent.FLAG_UPDATE_CURRENT
-    );
+    String notificationId = notification.getString("notificationId") + action;
+
+    intent.setAction("io.invertase.firebase.notifications.BackgroundAction");
+    intent.putExtra("action", action);
+    intent.putExtra("notification", notification);
+    return PendingIntent.getBroadcast(context, notificationId.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT);
   }
 
   private RemoteInput createRemoteInput(Bundle remoteInput) {
     String resultKey = remoteInput.getString("resultKey");
+
     RemoteInput.Builder rb = new RemoteInput.Builder(resultKey);
 
     if (remoteInput.containsKey("allowedDataTypes")) {
@@ -501,16 +379,13 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
         rb.setAllowDataType(adt.getString("mimeType"), adt.getBoolean("allow"));
       }
     }
-
     if (remoteInput.containsKey("allowFreeFormInput")) {
       rb.setAllowFreeFormInput(remoteInput.getBoolean("allowFreeFormInput"));
     }
-
     if (remoteInput.containsKey("choices")) {
       List<String> choices = remoteInput.getStringArrayList("choices");
       rb.setChoices(choices.toArray(new String[choices.size()]));
     }
-
     if (remoteInput.containsKey("label")) {
       rb.setLabel(remoteInput.getString("label"));
     }
@@ -521,17 +396,12 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
   private Bitmap getBitmap(String image) {
     if (image.startsWith("http://") || image.startsWith("https://")) {
       return getBitmapFromUrl(image);
-    }
-
-    if (image.startsWith("file://")) {
+    } else if (image.startsWith("file://")) {
       return BitmapFactory.decodeFile(image.replace("file://", ""));
+    } else {
+      int largeIconResId = getIcon(image);
+      return BitmapFactory.decodeResource(context.getResources(), largeIconResId);
     }
-
-    int largeIconResId = getIcon(image);
-    return BitmapFactory.decodeResource(
-      contextWeakReference.get().getResources(),
-      largeIconResId
-    );
   }
 
   private Bitmap getBitmapFromUrl(String imageUrl) {
@@ -547,29 +417,16 @@ public class DisplayNotificationTask extends AsyncTask<Void, Void, Void> {
   }
 
   private int getIcon(String icon) {
-    int resourceId = RNFirebaseNotificationManager.getResourceId(
-      contextWeakReference.get(),
-      "mipmap",
-      icon
-    );
-
+    int resourceId = RNFirebaseNotificationManager.getResourceId(context,"mipmap", icon);
     if (resourceId == 0) {
-      resourceId = RNFirebaseNotificationManager.getResourceId(
-        contextWeakReference.get(),
-        "drawable",
-        icon
-      );
+      resourceId = RNFirebaseNotificationManager.getResourceId(context,"drawable", icon);
     }
-
     return resourceId;
   }
 
-  private Class getMainActivityClass(Context context) {
+  private Class getMainActivityClass() {
     String packageName = context.getPackageName();
-    Intent launchIntent = context
-      .getPackageManager()
-      .getLaunchIntentForPackage(packageName);
-
+    Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
     try {
       return Class.forName(launchIntent.getComponent().getClassName());
     } catch (ClassNotFoundException e) {
